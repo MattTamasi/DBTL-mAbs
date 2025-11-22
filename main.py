@@ -1,15 +1,11 @@
 #!/usr/bin/env python
 """
-Legacy BoTorch main script for antibody formulation optimization.
-Uses the simplified legacy approach for comparison with original notebook.
+BoTorch main script for antibody formulation optimization.
 """
 
 import sys
 import logging
 from pathlib import Path
-
-# Add parent directory to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from config.config import load_config
 from src.utils import parse_arguments, setup_output_directory, setup_logging
@@ -17,7 +13,7 @@ from src.pipeline import BoTorchPipeline
 
 
 def main():
-    """Main orchestration function for the legacy optimization pipeline."""
+    """Main orchestration function for the optimization pipeline."""
     
     # Parse arguments and load configuration
     args = parse_arguments()
@@ -35,9 +31,9 @@ def main():
     
     try:
         logging.info("=" * 60)
-        logging.info("LEGACY ANTIBODY FORMULATION OPTIMIZATION PIPELINE")
+        logging.info("ANTIBODY FORMULATION OPTIMIZATION PIPELINE")
         logging.info("=" * 60)
-        logging.info("Using legacy approaches: Basic SingleTaskGP, Group K-fold CV, Fixed reference point")
+        logging.info("Using standard approaches: SingleTaskGP, Group K-fold CV, Fixed reference point")
         
         # Initialize and run pipeline
         pipeline = BoTorchPipeline(config)
@@ -48,7 +44,7 @@ def main():
             summary = pipeline.get_summary()
             
             logging.info("\n" + "=" * 50)
-            logging.info("LEGACY OPTIMIZATION COMPLETED SUCCESSFULLY")
+            logging.info("OPTIMIZATION COMPLETED SUCCESSFULLY")
             logging.info("=" * 50)
             
             logging.info(f"Datasets processed: {summary['datasets']}")
@@ -70,16 +66,16 @@ def main():
                 for opt_type, count in summary['optimization_candidates'].items():
                     logging.info(f"  {opt_type}: {count} candidates")
             
-            logging.info("\nLegacy pipeline completed successfully!")
+            logging.info("\nPipeline completed successfully!")
             
             return results
         else:
             error_msg = results.get("error", "Unknown error")
-            logging.error(f"Legacy pipeline failed: {error_msg}")
+            logging.error(f"Pipeline failed: {error_msg}")
             sys.exit(1)
         
     except Exception as e:
-        logging.error(f"Legacy pipeline failed: {str(e)}")
+        logging.error(f"Pipeline failed: {str(e)}")
         import traceback
         logging.error(traceback.format_exc())
         sys.exit(1)
