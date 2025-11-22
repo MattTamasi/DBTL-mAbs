@@ -10,7 +10,7 @@
     10|
     11|## Paper
     12|
-    13|[Read the full paper on ChemRxiv](LINK_TO_PAPER)
+    13|[Read the full paper on ChemRxiv](https://chemrxiv.org/engage/chemrxiv/article-details/68f28d1edfd0d042d1228a4f)
     14|
     15|## Abstract
     16|
