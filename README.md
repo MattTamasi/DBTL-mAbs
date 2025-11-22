@@ -30,25 +30,47 @@ The pipeline performs the following steps:
 
 ## Installation
 
-1.  Clone the repository.
-2.  Install the required dependencies:
+We recommend using `uv` for fast and reliable dependency management.
 
+1.  Clone the repository.
+2.  Install `uv` (if not already installed):
+    ```bash
+    pip install uv
+    ```
+3.  Create a virtual environment and install dependencies:
+    ```bash
+    # Create virtual environment
+    uv venv
+
+    # Install dependencies
+    uv pip install -r requirements.txt
+    ```
+
+Alternatively, you can use standard pip:
 ```bash
 pip install -r requirements.txt
 ```
 
 ## Usage
 
-To run the optimization pipeline:
+To run the optimization pipeline using the virtual environment:
 
+**Windows:**
 ```bash
-python main.py
+.venv\Scripts\python main.py
 ```
+
+**macOS/Linux:**
+```bash
+.venv/bin/python main.py
+```
+
+### Customization
 
 You can customize the execution using command-line arguments:
 
 ```bash
-python main.py --config config/custom_config.yaml --output_dir outputs/experiment_1
+.venv\Scripts\python main.py --config config/custom_config.yaml --output_dir outputs/experiment_1
 ```
 
 *   `--config`: Path to a YAML configuration file to override defaults.

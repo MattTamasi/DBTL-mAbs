@@ -12,7 +12,7 @@ import yaml
 
 
 @dataclass
-    class Config:
+class Config:
     """Configuration for BoTorch optimization pipeline."""
     
     # Core settings
@@ -152,4 +152,4 @@ def load_config(config_path: Optional[str] = None) -> Config:
             if hasattr(config, key):
                 setattr(config, key, value)
     
-    return config 
+    return config

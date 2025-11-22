@@ -22,7 +22,7 @@ from sklearn.preprocessing import MinMaxScaler
 from botorch.models import SingleTaskGP, ModelListGP
 from botorch.models.transforms.outcome import Standardize
 from botorch.models.transforms.input import Normalize
-from botorch.fit import fit_gpytorch_model
+from botorch.fit import fit_gpytorch_mll
 from botorch.acquisition import qExpectedImprovement
 from botorch.acquisition.multi_objective import qExpectedHypervolumeImprovement
 from botorch.optim import optimize_acqf
@@ -51,6 +51,7 @@ class DataProcessor:
         self.X_scalers = {}  # Dictionary of scalers per objective
         self.y_scalers = {}  # Individual scalers per objective
         self.datasets = {}  # Store processed datasets for multi-objective access
+        self.formulation_ids = {} # Store formulation IDs for alignment
         
     def load_and_process_data(self) -> Tuple[Dict[str, Dict[str, torch.Tensor]], Dict[str, np.ndarray]]:
         """Load and process data for all objectives."""
@@ -103,6 +104,7 @@ class DataProcessor:
             datasets[obj_name]["y"] = y_scaled
             self.datasets[obj_name] = datasets[obj_name]  # Store for multi-objective access
         
+        self.formulation_ids = formulation_ids # Store for multi-objective alignment
         return datasets, formulation_ids
     
     def load_and_process_data_with_metadata(self) -> Tuple[Dict[str, Dict[str, torch.Tensor]], Dict[str, np.ndarray], Dict[str, Dict[str, np.ndarray]]]:
@@ -554,7 +556,7 @@ class ModelTrainer:
             
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
-                fit_gpytorch_model(mll)
+                fit_gpytorch_mll(mll)
             
             # Validate model quality
             quality_result = self._validate_model_quality(model, X, y, obj_name)
