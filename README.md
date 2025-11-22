@@ -30,7 +30,7 @@ The pipeline performs the following steps:
     *   **Single-Objective**: Optimizes each target individually using q-Expected Improvement (qEI).
     *   **Multi-Objective**: Optimizes all targets simultaneously using q-Expected Hypervolume Improvement (qEHVI) with a fixed reference point.
 5.  **Explainability**:
-    *   **SHAP Analysis**: Generates SHAP values and plots to explain model predictions in real units.
+    *   **SHAP Analysis**: Automatically generates SHAP values (as pickle files) to explain model predictions in real units for all objectives.
 
 ## Repository Structure
 
@@ -41,11 +41,10 @@ The pipeline performs the following steps:
 │   └── Antibody_...    # Input Excel data
 ├── outputs/            # Generated models, logs, candidates, and SHAP results
 ├── src/
-│   ├── pipeline.py     # Core optimization logic (BoTorchPipeline)
+│   ├── pipeline.py     # Core optimization logic (BoTorchPipeline with integrated SHAP)
 │   ├── utils.py        # Utility functions (data loading, logging)
 │   └── shap_utils.py   # SHAP analysis and visualization utilities
-├── main.py             # Entry point script
-├── generate_shap_analysis.py # Script to run SHAP analysis on trained models
+├── main.py             # Entry point script (runs full pipeline including SHAP)
 ├── requirements.txt    # Python dependencies
 └── README.md           # This file
 ```
@@ -75,7 +74,7 @@ pip install -r requirements.txt
 
 ## Usage
 
-To run the optimization pipeline using the virtual environment:
+To run the complete optimization pipeline (including automatic SHAP analysis):
 
 **Windows:**
 ```bash
@@ -87,13 +86,7 @@ To run the optimization pipeline using the virtual environment:
 .venv/bin/python main.py
 ```
 
-### SHAP Analysis
-
-To generate SHAP analysis for trained models:
-
-```bash
-.venv\Scripts\python generate_shap_analysis.py
-```
+The pipeline automatically generates SHAP analysis results after model training, saving them to `outputs/shap_results/`.
 
 ### Customization
 
@@ -111,6 +104,8 @@ You can customize the execution using command-line arguments:
 
 The pipeline outputs:
 *   **optimization_candidates.xlsx**: Suggested formulation candidates for experimental validation.
-*   **models/**: Saved PyTorch/GPyTorch models.
+*   **models/**: Saved PyTorch/GPyTorch models (`.pkl` files).
 *   **pipeline.log**: Detailed execution log.
-*   **shap_results/**: SHAP values (CSV/Pickle) and summary plots.
+*   **shap_results/**: SHAP analysis results including:
+    *   Pickle files for each objective (e.g., `tm_shap_results.pkl`, `tm_shap_real_units.pkl`)
+    *   Summary plots (if generated)

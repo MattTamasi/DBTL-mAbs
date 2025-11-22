@@ -227,12 +227,13 @@ def expand_array_data(df: pd.DataFrame, target_col: str, std_col: str, concentra
                         new_row["Concentration (mg/mL)"] = conc_values[i]
                     else:
                         # Set default concentrations based on measurement type
+                        # Note: These defaults should match the actual experimental conditions
                         if target_col == "tm" or target_col == "diff":
-                            new_row["Concentration (mg/mL)"] = 10.0
+                            new_row["Concentration (mg/mL)"] = 15.0  # Default for Tm and Diffusion
                         elif target_col == "visc":
-                            new_row["Concentration (mg/mL)"] = 120.0
+                            new_row["Concentration (mg/mL)"] = 120.0  # Default for Viscosity
                         else:
-                            new_row["Concentration (mg/mL)"] = 10.0  # Default
+                            new_row["Concentration (mg/mL)"] = 15.0  # Default
                     
                     expanded_rows.append(new_row)
                     

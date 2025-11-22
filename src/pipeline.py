@@ -13,9 +13,8 @@ from typing import Dict, List, Optional, Tuple, Any
 import numpy as np
 import pandas as pd
 import torch
-from sklearn.model_selection import GroupKFold  # CHANGE: Revert back to Group K-fold as it was in original
+from sklearn.model_selection import GroupKFold
 from sklearn.metrics import r2_score
-from sklearn.metrics import mean_squared_error
 from sklearn.preprocessing import MinMaxScaler
 
 # BoTorch imports
@@ -31,10 +30,6 @@ from botorch.utils.multi_objective.box_decompositions.non_dominated import FastN
 
 # GPyTorch imports
 from gpytorch.mlls import ExactMarginalLogLikelihood
-
-import sys
-from pathlib import Path
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from config.config import Config
 from src import utils
@@ -107,67 +102,6 @@ class DataProcessor:
         self.formulation_ids = formulation_ids # Store for multi-objective alignment
         return datasets, formulation_ids
     
-    def load_and_process_data_with_metadata(self) -> Tuple[Dict[str, Dict[str, torch.Tensor]], Dict[str, np.ndarray], Dict[str, Dict[str, np.ndarray]]]:
-        """Load and process data for all objectives. Includes metadata (Form IDs, Gen, and Obj) for analysis.
-        Added by Chris on 2025-6-22."""
-        logging.info("Loading and processing data + metadata TEST...")
-        
-        # Load raw data
-        df = utils.load_excel_data(self.config.data_file)
-        
-        # Process each objective
-        datasets = {}
-        formulation_ids = {}
-        formulation_metadata = {}
-        
-        for obj_name, obj_config in self.config.objectives.items():
-            logging.info(f"Processing {obj_name} data...")
-            
-            # Expand array data and filter - use the raw column names from data file
-            source_target_col = obj_config["value"]  # e.g., "tm", "diff", "visc"
-            source_std_col = obj_config["std"]       # e.g., "tm_std", "diff_std", "visc_std"
-            source_conc_col = obj_config["concentration"]  # e.g., "concentration_tm"
-            
-            expanded_df = utils.expand_array_data(
-                df, source_target_col, 
-                source_std_col, 
-                source_conc_col
-            )
-            
-            if expanded_df.empty:
-                logging.warning(f"No data found for {obj_name}")
-                continue
-            
-            # Extract features and targets
-            X, y, std, form_ids, form_obj, form_gen = self._extract_features_targets_obj_gen(expanded_df, obj_config)
-
-            if X.shape[0] < self.config.min_samples:
-                logging.warning(f"Insufficient samples for {obj_name}: {X.shape[0]}")
-                continue
-
-            datasets[obj_name] = {"X_raw": X, "y_raw": y, "y_std": std}
-            formulation_ids[obj_name] = form_ids
-            formulation_metadata[obj_name] = {
-                "Formulation ID": form_ids,
-                "Objective": form_obj, 
-                "Generation": form_gen
-            }
-            
-            # Create objective-specific X scaler
-            self.X_scalers[obj_name] = MinMaxScaler()
-            self.X_scalers[obj_name].fit(X)
-            logging.info(f"  {obj_name}: {X.shape[0]} samples, {X.shape[1]} features, created objective-specific scaler")
-        
-        # Scale datasets and convert to tensors
-        for obj_name in datasets.keys():
-            X_scaled, y_scaled = self._scale_and_tensorize(datasets[obj_name], obj_name)
-            datasets[obj_name]["X"] = X_scaled
-            datasets[obj_name]["y"] = y_scaled
-            self.datasets[obj_name] = datasets[obj_name]  # Store for multi-objective access
-            
-
-        return datasets, formulation_ids, formulation_metadata
-
     
     def _extract_features_targets(self, df: pd.DataFrame, obj_config: Dict) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Extract features and targets from dataframe."""
@@ -182,28 +116,6 @@ class DataProcessor:
         
         return X, y, formulation_ids
     
-    def _extract_features_targets_obj_gen(self, df: pd.DataFrame, obj_config: Dict) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-        """Extract features and targets from dataframe. Added by Chris on 2025-6-21."""
-        # Features
-        X = df[self.config.feature_columns].values
-        
-        # Get std directly from obj_config, which comes from config.objectives
-        std = df[obj_config["std_column"]].values.reshape(-1, 1)
-
-        # Target values (only mean, not std)
-        y = df[obj_config["target_column"]].values.reshape(-1, 1)
-        
-        # Formulation IDs for grouping
-        formulation_ids = df["Formulation ID"].values
-
-        # Objectives for grouping
-        formulation_obj = df["Objective"].values
-
-        # Generation for grouping
-        formulation_gen = df["Generation"].values
-        
-        return X, y, std, formulation_ids, formulation_obj, formulation_gen
-
     def _scale_and_tensorize(self, dataset: Dict, obj_name: str) -> Tuple[torch.Tensor, torch.Tensor]:
         """Scale features and targets, convert to tensors."""
         X_raw = dataset["X_raw"]
@@ -627,70 +539,6 @@ class ModelTrainer:
         
         return cv_results
     
-    def cross_validate_with_preds(self, datasets: Dict[str, Dict[str, torch.Tensor]], 
-                  formulation_ids: Dict[str, np.ndarray]) -> Dict[str, Dict[str, Any]]:
-        """Chris Method: Perform cross-validation on models using GROUP K-FOLD and return predictions and scores."""
-        cv_results = {}
-    
-        for obj_name, data in datasets.items():
-            if obj_name not in formulation_ids or data["X"].shape[0] < self.config.cv_folds:
-                continue
-            
-            gkf = GroupKFold(n_splits=self.config.cv_folds)
-            groups = formulation_ids[obj_name]
-
-            # Randomize group assignment
-            unique_groups = np.unique(groups)
-            rng = np.random.default_rng(self.config.random_state)
-            shuffled_groups = rng.permutation(unique_groups)
-            group_mapping = {old: new for new, old in enumerate(shuffled_groups)}
-            mapped_groups = np.array([group_mapping[g] for g in groups])
-            
-            r2_scores = []
-            mse_scores = []
-            fold_preds = []
-            fold_truth = []
-
-            for train_idx, test_idx in gkf.split(data["X"], data["y"], mapped_groups):
-                X_train, X_test = data["X"][train_idx], data["X"][test_idx]
-                y_train, y_test = data["y"][train_idx], data["y"][test_idx]
-                
-                fold_model = self._train_single_model(X_train, y_train, f"{obj_name}_fold")
-                if fold_model:
-                    with torch.no_grad():
-                        pred = fold_model.posterior(X_test).mean
-                        pred_np = pred.numpy().flatten()
-                        y_test_np = y_test.numpy().flatten()
-                        
-                        r2 = r2_score(y_test_np, pred_np)
-                        mse = mean_squared_error(y_test_np, pred_np)
-                        
-                        r2_scores.append(r2)
-                        mse_scores.append(mse)
-                        fold_preds.append(pred_np)
-                        fold_truth.append(y_test_np)
-
-            # Combine all fold predictions
-            all_preds = np.concatenate(fold_preds) if fold_preds else np.array([])
-            all_truth = np.concatenate(fold_truth) if fold_truth else np.array([])
-
-            cv_results[obj_name] = {
-                "r2_scores": r2_scores,
-                "mean_r2": np.mean(r2_scores) if r2_scores else 0.0,
-                "std_r2": np.std(r2_scores) if r2_scores else 0.0,
-                "mse_scores": mse_scores,
-                "mean_mse": np.mean(mse_scores) if mse_scores else 0.0,
-                "predictions": all_preds,
-                "true_values": all_truth
-            }
-            
-            logging.info(
-                f"{obj_name} CV: R² = {cv_results[obj_name]['mean_r2']:.3f} ± {cv_results[obj_name]['std_r2']:.3f}, "
-                f"MSE = {cv_results[obj_name]['mean_mse']:.3f}"
-            )
-        
-        return cv_results
-
     
     def create_model_list(self, datasets: Dict[str, Dict[str, torch.Tensor]]) -> Optional[ModelListGP]:
         """Create ModelListGP for multi-objective optimization with active model keys."""
@@ -1138,6 +986,23 @@ class BoTorchPipeline:
             if self.config.save_models:
                 self.model_trainer.save_models(self.config.output_dir)
             
+            # 8. Run SHAP Analysis
+            logging.info("Step 6: Running SHAP analysis...")
+            try:
+                from src import shap_utils
+                all_shap_results, all_real_unit_results = shap_utils.run_shap_analysis(
+                    self.models,
+                    self.datasets,
+                    self.data_processor,
+                    self.formulation_ids,
+                    self.config
+                )
+                results["shap_analysis"] = "completed"
+                logging.info("SHAP analysis completed successfully.")
+            except Exception as e:
+                logging.warning(f"SHAP analysis failed: {e}")
+                results["shap_analysis"] = f"failed: {str(e)}"
+            
             results["success"] = True
             logging.info("Pipeline completed successfully!")
             
@@ -1154,7 +1019,8 @@ class BoTorchPipeline:
             "models_trained": len(self.models),
             "optimization_candidates": {
                 name: tensor.shape[0] for name, tensor in self.optimization_results.items()
-            }
+            },
+            "shap_analysis": "enabled"
         }
         
         if self.cv_results:

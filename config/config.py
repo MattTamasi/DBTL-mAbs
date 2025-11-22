@@ -74,7 +74,8 @@ class Config:
     num_restarts: int = 10
     reference_point: List[float] = field(default_factory=lambda: [0.0, 0.0, 0.0])
     
-    # These are bounds for unscaled features used during optimization
+    # Feature bounds for optimization (unscaled, in real units)
+    # These bounds are derived from the experimental data range
     feature_bounds = {
         "Molarity": (6.979166031, 98.02084351),
         "NaCl": (3.125, 146.875),
@@ -82,15 +83,7 @@ class Config:
         "Arginine": (2.604166667, 122.3958359),
         "pH": (4.0, 7.0),
         "Buffer": (1, 2),
-
-        #"Molarity": (5, 100),
-        #"NaCl": (0.0, 150),
-        #"Sucrose": (0, 25),        
-        #"Arginine": (1, 125),
-        #"pH": (4.0, 7.0),
-        #"Buffer": (1, 2),
-        # "Antibody Concentration" is not defined here because it will be defined
-        # dynamically based on the dataset and objectives within the pipeline
+        # Note: Antibody Concentration is handled dynamically based on the objective
     }
 
     valid_buffer_pH_pairs = {

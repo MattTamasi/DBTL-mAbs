@@ -195,18 +195,6 @@ def run_shap_analysis(models, datasets, data_processor, formulation_ids, config)
              joblib.dump(real_unit_summary, f)
         print(f"Saved Real Unit SHAP results to {real_pickle_path}")
 
-        # --- Save CSVs ---
-        
-        # 1. Unscaled (Real Unit) CSV
-        shap_df_real = pd.DataFrame(shap_values_real, columns=feature_names)
-        shap_df_real['Formulation ID'] = formulation_ids.get(model_name, np.arange(len(shap_df_real)))
-        shap_df_real['Base Value'] = base_value_real
-        shap_df_real['Predicted Value'] = base_value_real + shap_df_real[feature_names].sum(axis=1)
-        
-        csv_path_real = shap_dir / f"{model_name}_shap_values_real_units.csv"
-        shap_df_real.to_csv(csv_path_real, index=False)
-        print(f"Saved real-unit SHAP values to {csv_path_real}")
-
     return all_shap_results, all_real_unit_results
 
 
